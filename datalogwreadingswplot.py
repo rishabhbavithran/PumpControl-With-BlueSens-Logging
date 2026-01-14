@@ -104,7 +104,7 @@ except Exception as e:
     print(e)
     exit(1)
 
-LOG_INTERVAL = 60  # seconds between CSV writes
+LOG_INTERVAL = 1800  # seconds between CSV writes
 last_log_time = time.time()
 
 if client.connect() and ser.is_open:

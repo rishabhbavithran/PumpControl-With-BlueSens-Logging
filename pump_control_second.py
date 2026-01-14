@@ -1,11 +1,10 @@
 import serial
 import time
 import sys
-import os
 import subprocess
 import signal
 
-ser = serial.Serial('COM10', baudrate=19200, timeout=1)
+ser = serial.Serial('COM9', baudrate=19200, timeout=1)
 time.sleep(2)
 
 def send_command(cmd):
@@ -42,7 +41,7 @@ def setup_pump():
     time.sleep(0.5)
 
 def bacteria_dispersion():
-    bacteria_dispersion_duration = 90
+    bacteria_dispersion_duration = 120
     print(f"Bacteria Delivery for {bacteria_dispersion_duration} seconds...")
 
     run_for_duration('DIR INF', bacteria_dispersion_duration)
@@ -60,7 +59,7 @@ def sterlization():
 
 
 def fluid_removal():
-    removal_duration = 60
+    removal_duration = 120
     print(f"Emptying Notebook for {removal_duration} seconds...")
 
     run_for_duration('DIR WDR', removal_duration)
@@ -69,12 +68,12 @@ def fluid_removal():
 
 def methanol_production(lt, gt, ot):
     print("Starting Methanol Production Cycle...")
-    script_path = r"C:\Users\bk\Scripts\bluesens.py"
-    # Launch run_bluesens.py in a new terminal window
-    bluesens_process = subprocess.Popen(
-        [sys.executable, script_path],
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
-    )
+    # script_path = r"C:\Users\bk\Scripts\bluesens.py"
+    # # Launch run_bluesens.py in a new terminal window
+    # bluesens_process = subprocess.Popen(
+    #     [sys.executable, script_path],
+    #     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+    # )
 
     send_command('DIR INF')
     time.sleep(0.2)
@@ -90,16 +89,25 @@ def methanol_production(lt, gt, ot):
             if time.time() - elapsed_time > lt and liquid_cycle:
                 elapsed_time = time.time()
                 print("Gas cycle running")
+                send_command('STP')
                 send_command('DIR WDR')
+                send_command('RUN')
+
                 liquid_cycle = False
                 gas_cycle = True
-
+                remaining_time = int((ot - (time.time() - start_time))/60)
+                print(f"Remaining Time : {remaining_time} minutes")
             elif time.time() - elapsed_time > gt and gas_cycle:
                 elapsed_time = time.time()
                 print("Liquid cycle running")
+                send_command('STP')
                 send_command('DIR INF')
+                send_command('RUN')
+
                 liquid_cycle = True
                 gas_cycle = False
+                remaining_time = int((ot - (time.time() - start_time))/60)
+                print(f"Remaining Time : {remaining_time} minutes")
 
             time.sleep(0.1)
 
@@ -113,16 +121,16 @@ def methanol_production(lt, gt, ot):
         send_command('STP')
         raise
 
-    finally:
-        try:
-            with open("bluesens.pid", "r") as f:
-                fluid_removal()
+    # finally:
+    #     try:
+    #         with open("bluesens.pid", "r") as f:
+    #             fluid_removal()
 
-                bluesens_process.send_signal(signal.CTRL_BREAK_EVENT)
-                bluesens_process.wait()  # Wait for it to finish plotting
-                print("run_bluesens.py terminated.")
-        except Exception as e:
-            print(f"Could not terminate run_bluesens.py: {e}")
+    #             bluesens_process.send_signal(signal.CTRL_BREAK_EVENT)
+    #             bluesens_process.wait()  # Wait for it to finish plotting
+    #             print("run_bluesens.py terminated.")
+    #     except Exception as e:
+    #         print(f"Could not terminate run_bluesens.py: {e}")
 
 def get_process_choice():
     print("""
@@ -146,13 +154,13 @@ def emergency_stop():
     send_command('STP')
 
     # Kill bluesens if running
-    try:
-        with open("bluesens.pid", "r") as f:
-            bluesens_pid = int(f.read())
-            os.kill(bluesens_pid, signal.SIGTERM)
-            print("run_bluesens.py terminated due to emergency stop.")
-    except Exception:
-        pass
+    # try:
+    #     with open("bluesens.pid", "r") as f:
+    #         bluesens_pid = int(f.read())
+    #         os.kill(bluesens_pid, signal.SIGTERM)
+    #         print("run_bluesens.py terminated due to emergency stop.")
+    # except Exception:
+    #     pass
 
     ser.close()
     print("Serial port closed.")
